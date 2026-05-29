@@ -5,6 +5,8 @@
     "packages/*"
   ],
   "scripts": {
+    "dev": "bun run dev-server.ts",
+    "build:static": "bun run build-static.ts",
     "build": "turbo build",
     "test": "turbo test",
     "lint": "turbo lint",

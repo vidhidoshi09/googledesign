@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "bun run dev-server.ts",
     "build:static": "bun run build-static.ts",
-    "build": "turbo build",
+    "build": "bun run build-static.ts",
     "test": "turbo test",
     "lint": "turbo lint",
     "cli": "bun run packages/cli/src/index.ts"

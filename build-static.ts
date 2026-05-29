@@ -1,7 +1,10 @@
-import { readdirSync, readFileSync, writeFileSync, mkdirSync, cpSync, existsSync } from "fs";
-import { join } from "path";
+import { readdirSync, writeFileSync, mkdirSync, cpSync, existsSync } from "fs";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
 
-const ROOT = import.meta.dir;
+const ROOT = typeof __dirname !== "undefined"
+  ? __dirname
+  : dirname(fileURLToPath(import.meta.url));
 const EXAMPLES_DIR = join(ROOT, "examples");
 const OUT_DIR = join(ROOT, "public");
 

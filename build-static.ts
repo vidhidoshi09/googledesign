@@ -14,20 +14,15 @@ const examples = readdirSync(EXAMPLES_DIR, { withFileTypes: true })
   .filter((d) => d.isDirectory())
   .map((d) => d.name);
 
-// Copy each example directory into public/
 for (const name of examples) {
   cpSync(join(EXAMPLES_DIR, name), join(OUT_DIR, name), { recursive: true });
 }
 
-// Generate index.html
 const cards = examples.map((name) => {
   const hasPreview = existsSync(join(EXAMPLES_DIR, name, "preview.html"));
   const href = hasPreview ? `/${name}/preview.html` : `/${name}/DESIGN.md`;
   const sub = hasPreview ? "preview.html" : "DESIGN.md";
-  return `  <a href="${href}">
-    <div class="name">${name}</div>
-    <div class="sub">${sub}</div>
-  </a>`;
+  return `  <a href="${href}">\n    <div class="name">${name}</div>\n    <div class="sub">${sub}</div>\n  </a>`;
 }).join("\n");
 
 const index = `<!DOCTYPE html>

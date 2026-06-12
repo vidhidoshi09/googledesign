@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>AI Notes</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --bg: #111111;
+    --bg2: #1C1C1E;
+    --bg3: #2C2C2E;
+    --surface: #1C1C1E;
+    --card: #242424;
+    --border: #2C2C2E;
+    --text: #FFFFFF;
+    --text2: #8E8E93;
+    --text3: #636366;
+    --accent: #FFFFFF;
+    --red: #FF3B30;
+    --radius: 16px;
+  }
+
+  html, body {
+    height: 100%;
+    background: #000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: -apple-system, "SF Pro Display", "Helvetica Neue", sans-serif;
+  }
+
+  .phone {
+    width: 390px;
+    height: 844px;
+    background: var(--bg);
+    border-radius: 50px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 0 0 10px #1a1a1a, 0 40px 100px rgba(0,0,0,0.9);
+  }
+
+  .screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.3s ease;
+    will-change: transform;
+  }
+  .screen.hidden { transform: translateY(100%); pointer-events: none; }
+  .screen.slide-up { transform: translateY(0); }
+
+  .status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 28px 6px;
+    flex-shrink: 0;
+  }
+  .status-bar .time { font-size: 15px; font-weight: 600; color: var(--text); }
+  .status-bar .icons { display: flex; gap: 7px; align-items: center; }
+
+  #home { background: var(--bg); }
+  .home-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 20px 12px;
+    flex-shrink: 0;
+  }
+  .home-header .menu-btn {
+    width: 36px; height: 36px;
+    background: none; border: none;
+    color: var(--text);
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 20px;
+  }
+  .home-header h1 { font-size: 17px; font-weight: 600; color: var(--text); }
+  .home-header .placeholder { width: 36px; }
+
+  .notes-scroll {
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: none;
+    padding-bottom: 100px;
+  }
+
+  .section-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text2);
+    padding: 8px 20px 6px;
+    letter-spacing: 0.2px;
+  }
+
+  .note-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 20px;
+    cursor: pointer;
+    transition: background 0.15s;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .note-item:active { background: var(--bg3); }
+
+  .note-icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  .note-info { flex: 1; min-width: 0; }
+  .note-title {
+    font-size: 15px; font-weight: 500; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    margin-bottom: 2px;
+  }
+  .note-meta { font-size: 12px; color: var(--text2); }
+  .note-duration { font-size: 12px; color: var(--text3); flex-shrink: 0; }
+
+  .fab {
+    position: absolute;
+    bottom: 80px; left: 50%;
+    transform: translateX(-50%);
+    background: var(--text); color: #000;
+    border: none; border-radius: 9999px;
+    padding: 14px 32px;
+    font-size: 15px; font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+    white-space: nowrap;
+    transition: transform 0.15s, opacity 0.15s;
+    z-index: 10;
+  }
+  .fab:active { transform: translateX(-50%) scale(0.97); }
+  .fab.hidden { opacity: 0; pointer-events: none; }
+
+  #recording-bar {
+    position: absolute;
+    bottom: 20px; left: 20px; right: 20px;
+    background: var(--bg2);
+    border-radius: 16px;
+    padding: 12px 16px;
+    display: flex; align-items: center; gap: 12px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    transition: opacity 0.3s, transform 0.3s;
+    z-index: 10;
+  }
+  #recording-bar.hidden { opacity: 0; pointer-events: none; transform: translateY(12px); }
+  .rec-bar-wave { display: flex; align-items: center; gap: 2px; }
+  .rec-bar-wave span {
+    display: block; width: 2px; background: var(--text2); border-radius: 2px;
+    animation: bar-idle 1.2s ease-in-out infinite;
+  }
+  .rec-bar-wave span:nth-child(1) { height: 8px; animation-delay: 0s; }
+  .rec-bar-wave span:nth-child(2) { height: 14px; animation-delay: 0.1s; }
+  .rec-bar-wave span:nth-child(3) { height: 10px; animation-delay: 0.2s; }
+  .rec-bar-wave span:nth-child(4) { height: 16px; animation-delay: 0.15s; }
+  .rec-bar-wave span:nth-child(5) { height: 8px; animation-delay: 0.05s; }
+  @keyframes bar-idle {
+    0%, 100% { transform: scaleY(1); opacity: 0.6; }
+    50% { transform: scaleY(1.5); opacity: 1; }
+  }
+  .rec-bar-timer { font-size: 14px; font-weight: 500; color: var(--text); font-variant-numeric: tabular-nums; }
+  .rec-bar-label { font-size: 12px; color: var(--text2); flex: 1; }
+  .rec-bar-end {
+    background: none; border: 1px solid var(--border);
+    color: var(--text); border-radius: 9999px;
+    padding: 5px 14px; font-size: 13px; font-weight: 500; cursor: pointer;
+  }
+  .rec-bar-end:active { background: var(--bg3); }
+
+  #recording {
+    background: var(--bg);
+    transform: translateY(100%);
+    z-index: 20;
+  }
+
+  .swipe-hint {
+    text-align: center; font-size: 13px; color: var(--text2);
+    padding: 14px; cursor: pointer; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .swipe-hint svg { width: 14px; height: 14px; opacity: 0.6; }
+
+  .rec-header { padding: 8px 20px 0; flex-shrink: 0; }
+  .rec-title-row { display: flex; align-items: flex-start; justify-content: space-between; }
+  .rec-title { font-size: 32px; font-weight: 700; color: var(--text); line-height: 1.1; }
+  .rec-timestamp { font-size: 14px; color: var(--text2); margin-top: 6px; }
+  .rec-more {
+    background: var(--bg3); border: none; color: var(--text);
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 18px; margin-top: 4px; flex-shrink: 0;
+  }
+
+  .waveform {
+    flex: 1;
+    display: flex; align-items: center; justify-content: center;
+    gap: 3px; padding: 0 20px; overflow: hidden;
+  }
+  .waveform .bar {
+    width: 3px; border-radius: 3px; background: var(--text);
+    flex-shrink: 0; transition: height 0.08s ease;
+  }
+  .waveform .bar.past { background: var(--text3); }
+  .waveform .bar.future { background: var(--bg3); height: 4px !important; }
+
+  .rec-footer { padding: 0 20px 48px; flex-shrink: 0; }
+  .rec-progress-row { display: flex; justify-content: center; margin-bottom: 32px; }
+  .rec-timer {
+    font-size: 16px; color: var(--text2);
+    font-variant-numeric: tabular-nums; letter-spacing: 0.5px;
+  }
+  .rec-controls {
+    display: flex; align-items: center;
+    justify-content: center; gap: 24px;
+  }
+  .ctrl-btn {
+    width: 52px; height: 52px; border-radius: 50%;
+    background: var(--bg3); border: none; color: var(--text);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: transform 0.1s, background 0.1s;
+  }
+  .ctrl-btn:active { transform: scale(0.94); }
+  .ctrl-btn svg { width: 22px; height: 22px; }
+
+  .end-btn {
+    background: var(--text); color: #000; border: none;
+    border-radius: 9999px; padding: 16px 44px;
+    font-size: 17px; font-weight: 600; cursor: pointer;
+    transition: transform 0.1s, opacity 0.1s; letter-spacing: -0.2px;
+  }
+  .end-btn:active { transform: scale(0.97); }
+
+  #processing {
+    background: var(--bg); z-index: 30;
+    align-items: center; justify-content: center; gap: 16px;
+    transform: translateY(100%);
+  }
+  .processing-ring {
+    width: 56px; height: 56px;
+    border: 2px solid var(--bg3); border-top-color: var(--text);
+    border-radius: 50%; animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .processing-text { font-size: 17px; color: var(--text2); font-weight: 500; }
+
+  #summary { background: var(--bg); z-index: 40; transform: translateY(100%); }
+  .summary-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px 12px; flex-shrink: 0;
+  }
+  .back-btn {
+    background: var(--bg3); border: none; color: var(--text);
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .summary-actions { display: flex; gap: 8px; }
+  .icon-btn {
+    background: var(--bg3); border: none; color: var(--text);
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .summary-scroll { flex: 1; overflow-y: auto; scrollbar-width: none; padding: 0 20px 40px; }
+  .summary-title { font-size: 22px; font-weight: 700; color: var(--text); line-height: 1.3; margin-bottom: 6px; }
+  .summary-meta { font-size: 13px; color: var(--text2); margin-bottom: 24px; }
+  .summary-section { margin-bottom: 20px; }
+  .summary-section-title {
+    font-size: 11px; font-weight: 600; color: var(--text2);
+    text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px;
+  }
+  .action-item {
+    background: var(--card); border-radius: 12px;
+    padding: 12px 14px; margin-bottom: 8px;
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+  .action-check {
+    width: 20px; height: 20px; border-radius: 50%;
+    border: 2px solid var(--border); flex-shrink: 0; margin-top: 1px;
+    cursor: pointer; transition: background 0.15s, border-color 0.15s;
+  }
+  .action-check.done { background: #30D158; border-color: #30D158; }
+  .action-text { flex: 1; font-size: 14px; color: var(--text); line-height: 1.4; }
+  .action-owner { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  .key-point {
+    display: flex; gap: 10px; padding: 8px 0;
+    border-bottom: 0.5px solid var(--border);
+    font-size: 14px; color: var(--text); line-height: 1.5;
+  }
+  .key-point:last-child { border-bottom: none; }
+  .key-point::before { content: "·"; color: var(--text2); flex-shrink: 0; margin-top: 1px; }
+  .tag-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .tag {
+    background: var(--bg3); color: var(--text2);
+    border-radius: 9999px; padding: 5px 12px;
+    font-size: 12px; font-weight: 500;
+  }
+  .transcript-toggle {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--card); border-radius: 12px; padding: 14px;
+    cursor: pointer; color: var(--text2); font-size: 14px;
+  }
+  .paused-badge {
+    display: none; background: var(--bg3); border-radius: 9999px;
+    padding: 4px 12px; font-size: 12px; font-weight: 500;
+    color: var(--text2); align-items: center; gap: 6px;
+    position: absolute; top: 70px; right: 20px;
+  }
+  .paused-badge.visible { display: flex; }
+  .paused-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--red); }
+</style>
+</head>
+<body>
+
+<div class="phone">
+
+  <div class="screen slide-up" id="home">
+    <div class="status-bar">
+      <span class="time" id="clock">11:11</span>
+      <div class="icons">
+        <svg width="16" height="12" viewBox="0 0 16 12" fill="white"><rect x="0" y="3" width="3" height="9" rx="1"/><rect x="4.5" y="1.5" width="3" height="10.5" rx="1"/><rect x="9" y="0" width="3" height="12" rx="1"/><rect x="13.5" y="0" width="2.5" height="12" rx="1" opacity="0.3"/></svg>
+        <svg width="16" height="12" viewBox="0 0 16 12" fill="white"><path d="M8 2.4C10.7 2.4 13.1 3.5 14.8 5.4L16 4.2C14 2 11.1.8 8 .8S2 2 0 4.2L1.2 5.4C2.9 3.5 5.3 2.4 8 2.4Z" opacity="0.3"/><path d="M8 5C9.8 5 11.5 5.8 12.7 7.1L13.9 5.9C12.4 4.3 10.3 3.3 8 3.3S3.6 4.3 2.1 5.9L3.3 7.1C4.5 5.8 6.2 5 8 5Z" opacity="0.6"/><circle cx="8" cy="10" r="2"/></svg>
+        <svg width="25" height="12" viewBox="0 0 25 12" fill="none"><rect x="0.5" y="0.5" width="21" height="11" rx="3.5" stroke="white" stroke-opacity="0.35"/><rect x="2" y="2" width="16" height="8" rx="2" fill="white"/><path d="M23 4V8C24 7.5 24.5 6.8 24.5 6S24 4.5 23 4Z" fill="white" opacity="0.4"/></svg>
+      </div>
+    </div>
+    <div class="home-header">
+      <button class="menu-btn">
+        <svg width="20" height="14" viewBox="0 0 20 14" fill="white"><rect width="20" height="2" rx="1"/><rect y="6" width="14" height="2" rx="1"/><rect y="12" width="20" height="2" rx="1"/></svg>
+      </button>
+      <h1>AI notes</h1>
+      <div class="placeholder"></div>
+    </div>
+    <div class="notes-scroll" id="notes-scroll">
+      <div class="section-label">Today</div>
+      <div id="notes-list"></div>
+      <div class="section-label" style="margin-top:8px">Earlier</div>
+      <div id="notes-earlier"></div>
+    </div>
+    <button class="fab" id="fab-btn">+ New note</button>
+    <div id="recording-bar" class="hidden">
+      <div class="rec-bar-wave">
+        <span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <span class="rec-bar-timer" id="bar-timer">00:00</span>
+      <span class="rec-bar-label">Recording…</span>
+      <button class="rec-bar-end" id="bar-end-btn">End</button>
+    </div>
+  </div>
+
+  <div class="screen hidden" id="recording">
+    <div class="swipe-hint" id="swipe-hint">
+      <svg viewBox="0 0 24 24" fill="white"><path d="M12 16l-6-6 1.4-1.4L12 13.2l4.6-4.6L18 10z"/></svg>
+      Swipe down to hide
+    </div>
+    <div class="rec-header">
+      <div class="rec-title-row">
+        <div>
+          <div class="rec-title" id="rec-title">New note</div>
+          <div class="rec-timestamp" id="rec-timestamp"></div>
+        </div>
+        <button class="rec-more">⋯</button>
+      </div>
+    </div>
+    <div class="paused-badge" id="paused-badge">
+      <div class="paused-dot"></div>
+      Paused
+    </div>
+    <div class="waveform" id="waveform"></div>
+    <div class="rec-footer">
+      <div class="rec-progress-row">
+        <span class="rec-timer" id="rec-timer">00:00 / 10:00</span>
+      </div>
+      <div class="rec-controls">
+        <button class="ctrl-btn" id="attach-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5" fill="white" stroke="none"/><polyline points="21,15 16,10 5,21"/></svg>
+        </button>
+        <button class="end-btn" id="end-btn">End</button>
+        <button class="ctrl-btn" id="pause-btn">
+          <svg viewBox="0 0 24 24" fill="white" id="pause-icon"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen hidden" id="processing">
+    <div class="status-bar">
+      <span class="time">11:11</span>
+      <div class="icons">
+        <svg width="16" height="12" viewBox="0 0 16 12" fill="white"><rect x="0" y="3" width="3" height="9" rx="1"/><rect x="4.5" y="1.5" width="3" height="10.5" rx="1"/><rect x="9" y="0" width="3" height="12" rx="1"/></svg>
+        <svg width="25" height="12" viewBox="0 0 25 12" fill="none"><rect x="0.5" y="0.5" width="21" height="11" rx="3.5" stroke="white" stroke-opacity="0.35"/><rect x="2" y="2" width="16" height="8" rx="2" fill="white"/></svg>
+      </div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px">
+      <div class="processing-ring"></div>
+      <div class="processing-text">Generating summary…</div>
+    </div>
+  </div>
+
+  <div class="screen hidden" id="summary">
+    <div class="status-bar">
+      <span class="time">11:11</span>
+      <div class="icons">
+        <svg width="16" height="12" viewBox="0 0 16 12" fill="white"><rect x="0" y="3" width="3" height="9" rx="1"/><rect x="4.5" y="1.5" width="3" height="10.5" rx="1"/><rect x="9" y="0" width="3" height="12" rx="1"/></svg>
+        <svg width="25" height="12" viewBox="0 0 25 12" fill="none"><rect x="0.5" y="0.5" width="21" height="11" rx="3.5" stroke="white" stroke-opacity="0.35"/><rect x="2" y="2" width="16" height="8" rx="2" fill="white"/></svg>
+      </div>
+    </div>
+    <div class="summary-header">
+      <button class="back-btn" id="summary-back">
+        <svg width="10" height="16" viewBox="0 0 10 16" fill="white"><path d="M8 2L2 8l6 6" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+      </button>
+      <div class="summary-actions">
+        <button class="icon-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+        </button>
+        <button class="icon-btn">
+          <svg width="16" height="4" viewBox="0 0 20 4" fill="white"><circle cx="2" cy="2" r="2"/><circle cx="10" cy="2" r="2"/><circle cx="18" cy="2" r="2"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="summary-scroll" id="summary-content"></div>
+  </div>
+
+</div>
+
+<script>
+const state = {
+  isRecording: false, isPaused: false, isHidden: false,
+  elapsed: 0, maxDuration: 600, timerInterval: null, notes: [],
+};
+
+const sampleNotes = [
+  { id:1, title:"Product hiring and customer…", time:"09:45 PM", duration:"15:43", icon:"🟥", summary:"product-hiring" },
+  { id:2, title:"New hiring update", time:"09:45 PM", duration:"01:15:46", icon:"🎨", summary:"hiring-update" },
+  { id:3, title:"Mobile UX review decisi…", time:"09:45 PM", duration:"02:15:35", icon:"📱", summary:"ux-review" },
+  { id:4, title:"Product hiring and custo…", time:"09:45 PM", duration:"30:41", icon:"👕", summary:null },
+  { id:5, title:"New hiring update", time:"09:45 PM", duration:"30:46", icon:"🎨", summary:null },
+];
+const sampleEarlier = [
+  { id:6, title:"Mobile UX review decisi…", time:"09:45 PM", duration:"50:45", icon:"📱", summary:null },
+  { id:7, title:"Product hiringNew hiring…", time:"09:45 PM", duration:"12:23", icon:"👕", summary:null },
+  { id:8, title:"Product hiring and custo…", time:"09:45 PM", duration:"15:35", icon:"📱", summary:null },
+];
+
+const summaries = {
+  "product-hiring": {
+    title: "Product hiring and customer feedback",
+    meta: "Today · 15:43",
+    actions: [
+      { text: "Send revised job description to Arjun", owner: "Priya · by Fri", done: false },
+      { text: "Schedule follow-up interview with candidate pool", owner: "Rahul · by next Mon", done: false },
+      { text: "Share customer feedback report with team", owner: "Neha · 10-Jun-2026", done: true },
+    ],
+    points: [
+      "Hiring target: 3 senior PMs by end of quarter",
+      "Customer NPS dropped to 34 — needs immediate action plan",
+      "Two candidates shortlisted from last week’s interviews",
+      "Budget approved for contractor until full-time hire",
+    ],
+    tags: ["Hiring", "Product", "Q2"],
+  },
+  "hiring-update": {
+    title: "New hiring update",
+    meta: "Today · 01:15:46",
+    actions: [
+      { text: "Post updated JD on LinkedIn by EOD", owner: "Karan · Today", done: false },
+      { text: "Review 12 applications in queue", owner: "Priya · by Wed", done: false },
+    ],
+    points: [
+      "Role opened for senior designer and backend engineer",
+      "Referral bonus increased to ₹50,000",
+      "Interview loop reduced from 5 to 3 rounds",
+    ],
+    tags: ["Hiring", "HR"],
+  },
+  "ux-review": {
+    title: "Mobile UX review decisions",
+    meta: "Today · 02:15:35",
+    actions: [
+      { text: "Redesign onboarding flow with 3 screens max", owner: "Design team · 15-Jun", done: false },
+      { text: "Fix nav bar spacing on Android 12", owner: "Dev · 12-Jun", done: false },
+      { text: "Share prototype link with stakeholders", owner: "Vidhi · Today", done: false },
+    ],
+    points: [
+      "New navigation pattern approved — bottom bar replaces hamburger",
+      "Dark mode to be default for AI Notes feature",
+      "Recording screen should show waveform, not text",
+      "Summary must fit in one scroll — no exceptions",
+    ],
+    tags: ["UX", "Design", "Mobile"],
+  },
+};
+
+const $ = id => document.getElementById(id);
+const recScreen = $('recording');
+const procScreen = $('processing');
+const summaryScreen = $('summary');
+const recBar = $('recording-bar');
+const fab = $('fab-btn');
+const waveform = $('waveform');
+const pauseBtn = $('pause-btn');
+const pauseIcon = $('pause-icon');
+const pausedBadge = $('paused-badge');
+
+const BAR_COUNT = 80;
+const waveHeights = [];
+for (let i = 0; i < BAR_COUNT; i++) {
+  const bar = document.createElement('div');
+  bar.className = 'bar future'; bar.style.height = '4px';
+  waveform.appendChild(bar); waveHeights.push(4);
+}
+
+function getRandomHeight() { return Math.floor(Math.random() * 80) + 6; }
+
+function updateWaveformBars() {
+  const bars = waveform.querySelectorAll('.bar');
+  const progress = state.elapsed / state.maxDuration;
+  const playhead = Math.floor(progress * BAR_COUNT);
+  bars.forEach((bar, i) => {
+    if (i < playhead) {
+      bar.className = 'bar past';
+      if (!waveHeights[i] || waveHeights[i] === 4) waveHeights[i] = getRandomHeight();
+      bar.style.height = waveHeights[i] + 'px';
+    } else if (i === playhead) {
+      bar.className = 'bar';
+      waveHeights[i] = getRandomHeight();
+      bar.style.height = waveHeights[i] + 'px';
+    } else {
+      bar.className = 'bar future'; bar.style.height = '4px';
+    }
+  });
+}
+
+let waveAnim = null;
+function startWaveAnim() {
+  clearInterval(waveAnim);
+  waveAnim = setInterval(() => {
+    if (!state.isPaused && state.isRecording) {
+      const bars = waveform.querySelectorAll('.bar');
+      const playhead = Math.floor((state.elapsed / state.maxDuration) * BAR_COUNT);
+      for (let j = Math.max(0, playhead - 2); j <= Math.min(BAR_COUNT-1, playhead+2); j++) {
+        if (j <= playhead) { waveHeights[j] = getRandomHeight(); bars[j].style.height = waveHeights[j]+'px'; }
+      }
+    }
+  }, 80);
+}
+function stopWaveAnim() { clearInterval(waveAnim); }
+
+function formatTime(s) {
+  return `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`;
+}
+
+function startTimer() {
+  clearInterval(state.timerInterval);
+  state.timerInterval = setInterval(() => {
+    if (!state.isPaused) {
+      state.elapsed++;
+      const t = formatTime(state.elapsed);
+      $('rec-timer').textContent = `${t} / 10:00`;
+      $('bar-timer').textContent = t;
+      updateWaveformBars();
+      if (state.elapsed >= state.maxDuration) endRecording(true);
+    }
+  }, 1000);
+}
+
+function updateClock() {
+  const now = new Date();
+  $('clock').textContent = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+}
+setInterval(updateClock, 10000); updateClock();
+
+function renderNotes() {
+  const listEl = $('notes-list'), earlierEl = $('notes-earlier');
+  const today = [...state.notes.map(n=>({...n,fresh:true})), ...sampleNotes];
+  listEl.innerHTML = ''; today.forEach(n => listEl.appendChild(makeNoteEl(n)));
+  earlierEl.innerHTML = ''; sampleEarlier.forEach(n => earlierEl.appendChild(makeNoteEl(n)));
+}
+
+function makeNoteEl(note) {
+  const el = document.createElement('div');
+  el.className = 'note-item';
+  el.innerHTML = `
+    <div class="note-icon">${note.icon||'📝'}</div>
+    <div class="note-info">
+      <div class="note-title">${note.title}</div>
+      <div class="note-meta">${note.time}</div>
+    </div>
+    <div class="note-duration">${note.duration||'–'}</div>`;
+  if (note.summary) el.addEventListener('click', () => showSummary(note.summary));
+  return el;
+}
+
+function showScreen(el) {
+  el.classList.remove('hidden');
+  requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('slide-up')));
+}
+function hideScreen(el) {
+  el.classList.remove('slide-up');
+  setTimeout(() => el.classList.add('hidden'), 400);
+}
+
+$('fab-btn').addEventListener('click', () => {
+  const now = new Date();
+  const h = now.getHours(), m = now.getMinutes().toString().padStart(2,'0');
+  const ampm = h>=12?'PM':'AM', h12 = ((h%12)||12).toString().padStart(2,'0');
+  $('rec-timestamp').textContent = `${h12}:${m} ${ampm}`;
+  $('rec-title').textContent = 'New note';
+  state.isRecording = true; state.isPaused = false; state.isHidden = false; state.elapsed = 0;
+  $('rec-timer').textContent = '00:00 / 10:00'; $('bar-timer').textContent = '00:00';
+  updateWaveformBars();
+  showScreen(recScreen); startTimer(); startWaveAnim();
+});
+
+function hideToBackground() {
+  state.isHidden = true;
+  hideScreen(recScreen);
+  recBar.classList.remove('hidden');
+  fab.classList.add('hidden');
+}
+
+$('swipe-hint').addEventListener('click', hideToBackground);
+
+let touchStartY = 0;
+recScreen.addEventListener('touchstart', e => { touchStartY = e.touches[0].clientY; }, {passive:true});
+recScreen.addEventListener('touchmove', e => {
+  const dy = e.touches[0].clientY - touchStartY;
+  if (dy > 0) recScreen.style.transform = `translateY(${Math.min(dy,200)}px)`;
+}, {passive:true});
+recScreen.addEventListener('touchend', e => {
+  const dy = e.changedTouches[0].clientY - touchStartY;
+  recScreen.style.transform = '';
+  if (dy > 80) hideToBackground();
+});
+
+$('recording-bar').addEventListener('click', e => {
+  if (e.target === $('bar-end-btn')) return;
+  state.isHidden = false;
+  recBar.classList.add('hidden'); fab.classList.remove('hidden');
+  showScreen(recScreen);
+});
+
+$('bar-end-btn').addEventListener('click', () => endRecording(false));
+
+pauseBtn.addEventListener('click', () => {
+  state.isPaused = !state.isPaused;
+  if (state.isPaused) {
+    pauseIcon.innerHTML = `<path d="M8 5v14l11-7z" fill="white"/>`;
+    pausedBadge.classList.add('visible');
+  } else {
+    pauseIcon.innerHTML = `<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>`;
+    pausedBadge.classList.remove('visible');
+  }
+});
+
+$('end-btn').addEventListener('click', () => endRecording(false));
+
+function endRecording(timeout) {
+  clearInterval(state.timerInterval); stopWaveAnim();
+  state.isRecording = false; state.isPaused = false;
+  pausedBadge.classList.remove('visible');
+  recBar.classList.add('hidden'); fab.classList.remove('hidden');
+  if (!recScreen.classList.contains('hidden')) hideScreen(recScreen);
+  setTimeout(() => {
+    showScreen(procScreen);
+    setTimeout(() => {
+      hideScreen(procScreen);
+      const newNote = {
+        id: Date.now(), title: 'New note',
+        time: new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}),
+        duration: formatTime(state.elapsed), icon: '🎙️', summary: 'ux-review',
+      };
+      state.notes.unshift(newNote); renderNotes(); state.elapsed = 0;
+      waveform.querySelectorAll('.bar').forEach(b => { b.className='bar future'; b.style.height='4px'; });
+      setTimeout(() => showSummary('ux-review'), 200);
+    }, 1800);
+  }, 200);
+}
+
+function showSummary(key) {
+  const data = summaries[key]; if (!data) return;
+  const actionsHtml = data.actions.map((a,i) => `
+    <div class="action-item">
+      <div class="action-check ${a.done?'done':''}" data-i="${i}"></div>
+      <div><div class="action-text">${a.text}</div><div class="action-owner">${a.owner}</div></div>
+    </div>`).join('');
+  const pointsHtml = data.points.map(p=>`<div class="key-point">${p}</div>`).join('');
+  const tagsHtml = data.tags.map(t=>`<span class="tag">${t}</span>`).join('');
+  $('summary-content').innerHTML = `
+    <div class="summary-title">${data.title}</div>
+    <div class="summary-meta">${data.meta}</div>
+    <div class="summary-section"><div class="summary-section-title">✅ Action Items</div>${actionsHtml}</div>
+    <div class="summary-section"><div class="summary-section-title">📌 Key Points</div>${pointsHtml}</div>
+    <div class="summary-section"><div class="summary-section-title">Tags</div><div class="tag-row">${tagsHtml}</div></div>
+    <div class="summary-section"><div class="transcript-toggle"><span>Transcript</span><svg width="12" height="8" viewBox="0 0 12 8" fill="white" opacity="0.5"><path d="M1 1l5 5 5-5"/></svg></div></div>`;
+  $('summary-content').querySelectorAll('.action-check').forEach(el => {
+    el.addEventListener('click', () => el.classList.toggle('done'));
+  });
+  showScreen(summaryScreen);
+}
+
+$('summary-back').addEventListener('click', () => hideScreen(summaryScreen));
+renderNotes();
+</script>
+</body>
+</html>

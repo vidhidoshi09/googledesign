@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chalchitra — Movie Recommendations by Genre</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,500;0,600;1,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --background: #FAFAF6;
+    --surface: #FFFFFF;
+    --surface-container-low: #F5F4EE;
+    --surface-container: #EFEDE4;
+    --surface-container-high: #E7E4D8;
+    --on-surface: #17181A;
+    --on-surface-variant: #63645E;
+    --outline: #D6D3C6;
+    --outline-variant: #EAE8DE;
+    --primary: #17181A;
+    --on-primary: #FAFAF6;
+
+    --poetry: #8E2FBE;         --poetry-glow: #B84FE0;         --poetry-container: #F1DDF9;
+    --slice-of-life: #A85A15;  --slice-of-life-glow: #E8963C;  --slice-of-life-container: #FBE7CE;
+    --thriller: #A82E2E;       --thriller-glow: #D93A3A;       --thriller-container: #F8D8D4;
+    --alien: #7A6B1A;          --alien-glow: #C9B93B;          --alien-container: #F3EEC7;
+    --drama: #1F4FBE;          --drama-glow: #4A7FE8;          --drama-container: #DCE6FB;
+    --wonder: #1F7A3A;         --wonder-glow: #3FB65C;         --wonder-container: #DBF2E1;
+
+    --imdb-yellow: #F5C518;
+
+    --font-display: "Fraunces", Georgia, serif;
+    --font-body: "Inter", -apple-system, "Segoe UI", sans-serif;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--background);
+    color: var(--on-surface);
+    font-family: var(--font-body);
+    overflow: hidden;
+  }
+
+  .canvas {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    min-height: 640px;
+    overflow: hidden;
+  }
+
+  /* ── PROMPT COLUMN ── */
+  .prompt {
+    position: absolute;
+    top: 0; left: 0;
+    width: min(400px, 36vw);
+    height: 100%;
+    padding: 56px 40px;
+    display: flex;
+    flex-direction: column;
+    z-index: 5;
+  }
+
+  .brand {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 500;
+    font-size: 15px;
+    color: var(--on-surface-variant);
+    margin-bottom: 64px;
+    letter-spacing: 0.01em;
+  }
+
+  .prompt-copy { flex: 0 0 auto; }
+
+  .prompt-line {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: clamp(26px, 3vw, 34px);
+    line-height: 1.25;
+    color: var(--on-surface);
+  }
+  .prompt-or {
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--on-surface-variant);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin: 18px 0;
+    padding-left: 2px;
+  }
+
+  .mood-form {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .mood-input {
+    width: 100%;
+    background: var(--surface);
+    color: var(--on-surface);
+    border: 1px solid var(--outline);
+    border-radius: 16px;
+    padding: 14px 18px;
+    font-family: var(--font-body);
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .mood-input::placeholder { color: var(--on-surface-variant); }
+  .mood-input:focus {
+    border-color: var(--on-surface);
+    box-shadow: 0 0 0 3px var(--surface-container-high);
+  }
+  .mood-hint {
+    font-size: 12px;
+    color: var(--on-surface-variant);
+    padding-left: 4px;
+    min-height: 16px;
+  }
+  .mood-hint.active { color: var(--on-surface); font-weight: 500; }
+
+  .genre-chips {
+    margin-top: 28px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .chip {
+    appearance: none;
+    border: none;
+    cursor: pointer;
+    background: var(--surface-container-low);
+    color: var(--on-surface-variant);
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 16px;
+    border-radius: 9999px;
+    transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+  }
+  .chip:hover { transform: translateY(-1px); }
+  .chip.selected { background: var(--on-surface); color: var(--on-primary); }
+
+  .prompt-footer {
+    margin-top: auto;
+    font-size: 12px;
+    color: var(--on-surface-variant);
+    line-height: 1.6;
+  }
+
+  /* ── ORB FIELD ── */
+  .orb-field {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+  }
+
+  .orb {
+    position: absolute;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    filter: blur(0px);
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s ease;
+    transform: scale(1);
+  }
+  .orb::before {
+    content: "";
+    position: absolute;
+    inset: -40%;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 45%, var(--glow) 0%, var(--glow) 28%, transparent 72%);
+    filter: blur(22px);
+    z-index: 0;
+  }
+  .orb-label {
+    position: relative;
+    z-index: 1;
+    font-family: var(--font-display);
+    font-weight: 500;
+    color: var(--on-primary);
+    font-size: var(--label-size, 15px);
+    letter-spacing: 0.01em;
+    padding: 0 12%;
+    pointer-events: none;
+    text-shadow: 0 1px 12px rgba(0,0,0,0.15);
+  }
+  .orb:hover { transform: scale(1.04); }
+  .orb.dim { opacity: 0.34; }
+  .orb.matched::after {
+    content: "";
+    position: absolute;
+    inset: -14px;
+    border-radius: 50%;
+    border: 2px solid var(--core);
+    animation: pulse-ring 1.6s ease-out infinite;
+  }
+  @keyframes pulse-ring {
+    0%   { transform: scale(0.92); opacity: 0.9; }
+    100% { transform: scale(1.18); opacity: 0; }
+  }
+
+  .orb.open { transform: scale(1.08); }
+
+  /* ── RECOMMENDATION PANEL ── */
+  .panel {
+    position: absolute;
+    width: 300px;
+    background: var(--surface);
+    border-radius: 24px;
+    box-shadow: 0 24px 60px rgba(23, 24, 26, 0.16), 0 4px 16px rgba(23, 24, 26, 0.08);
+    padding: 18px;
+    z-index: 10;
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+    pointer-events: none;
+    transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+    max-height: min(78vh, 560px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+  .panel.visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .panel-title {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 19px;
+    color: var(--core, var(--on-surface));
+  }
+  .panel-close {
+    appearance: none;
+    border: none;
+    background: var(--surface-container-low);
+    color: var(--on-surface-variant);
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .panel-close:hover { background: var(--surface-container-high); }
+
+  .movie-card {
+    display: flex;
+    gap: 12px;
+    padding: 10px;
+    border-radius: 16px;
+    border-left: 3px solid var(--core, var(--on-surface));
+    background: var(--surface-container-low);
+    margin-bottom: 8px;
+  }
+  .movie-card:last-child { margin-bottom: 0; }
+
+  .poster {
+    flex: 0 0 auto;
+    width: 46px;
+    height: 66px;
+    border-radius: 8px;
+    background: radial-gradient(circle at 32% 28%, var(--glow) 0%, var(--core) 75%);
+    position: relative;
+    overflow: hidden;
+  }
+  .poster::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(115deg, rgba(255,255,255,0.12) 0 2px, transparent 2px 9px);
+  }
+
+  .movie-info { flex: 1; min-width: 0; }
+  .movie-title {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 14.5px;
+    line-height: 1.3;
+    color: var(--on-surface);
+  }
+  .movie-title .year { color: var(--on-surface-variant); font-weight: 400; }
+  .movie-director {
+    font-size: 12px;
+    color: var(--on-surface-variant);
+    margin-top: 3px;
+  }
+  .movie-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .imdb-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: var(--imdb-yellow);
+    color: #000;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  @media (max-width: 780px) {
+    .canvas { overflow-y: auto; height: auto; min-height: 100vh; }
+    .prompt { position: relative; width: 100%; height: auto; padding: 32px 24px 8px; }
+    .brand { margin-bottom: 32px; }
+    .orb-field { position: relative; height: 640px; }
+    .panel { position: fixed; left: 50% !important; top: auto !important; bottom: 16px; transform: translate(-50%, 20px) scale(0.97); width: min(320px, 90vw); }
+    .panel.visible { transform: translate(-50%, 0) scale(1); }
+  }
+</style>
+</head>
+<body>
+
+<div class="canvas">
+  <div class="prompt">
+    <div class="brand">Chalchitra</div>
+
+    <div class="prompt-copy">
+      <div class="prompt-line">Describe your mood</div>
+      <div class="prompt-or">or</div>
+      <div class="prompt-line">Pick a genre</div>
+    </div>
+
+    <form class="mood-form" id="mood-form">
+      <input
+        class="mood-input"
+        id="mood-input"
+        type="text"
+        placeholder="e.g. quiet, restless, hopeful…"
+        autocomplete="off"
+      >
+      <div class="mood-hint" id="mood-hint"></div>
+    </form>
+
+    <div class="genre-chips" id="genre-chips"></div>
+
+    <div class="prompt-footer">Click a genre, or type a mood and press Enter — the closest genre will glow and open.</div>
+  </div>
+
+  <div class="orb-field" id="orb-field"></div>
+
+  <div class="panel" id="panel">
+    <div class="panel-header">
+      <div class="panel-title" id="panel-title"></div>
+      <button class="panel-close" id="panel-close" aria-label="Close">✕</button>
+    </div>
+    <div id="panel-body"></div>
+  </div>
+</div>
+
+<script>
+  const GENRES = [
+    {
+      id: "poetry", name: "Poetry",
+      core: "var(--poetry)", glow: "var(--poetry-glow)",
+      size: 170, top: "4%", left: "44%", labelSize: 16,
+      moods: ["quiet","reflective","lonely","wistful","melancholy","melancholic","poetic","slow","calm","introspective","nostalgic","dreamy"],
+      films: [
+        { title: "Paterson", year: 2016, director: "Jim Jarmusch", rating: "7.4" },
+        { title: "Dead Poets Society", year: 1989, director: "Peter Weir", rating: "8.1" },
+        { title: "Il Postino", year: 1994, director: "Michael Radford", rating: "7.8" },
+      ],
+    },
+    {
+      id: "slice-of-life", name: "Slice of life",
+      core: "var(--slice-of-life)", glow: "var(--slice-of-life-glow)",
+      size: 132, top: "60%", left: "38%", labelSize: 14,
+      moods: ["cozy","everyday","gentle","warm","simple","comfort","familiar","homesick","tender"],
+      films: [
+        { title: "Chungking Express", year: 1994, director: "Wong Kar-wai", rating: "8.0" },
+        { title: "Lost in Translation", year: 2003, director: "Sofia Coppola", rating: "7.7" },
+        { title: "Kikujiro", year: 1999, director: "Takeshi Kitano", rating: "7.8" },
+      ],
+    },
+    {
+      id: "thriller", name: "Thriller",
+      core: "var(--thriller)", glow: "var(--thriller-glow)",
+      size: 112, top: "6%", left: "84%", labelSize: 12,
+      moods: ["tense","anxious","paranoid","restless","edgy","on edge","adrenaline","gripping","suspicious"],
+      films: [
+        { title: "Parasite", year: 2019, director: "Bong Joon-ho", rating: "8.5" },
+        { title: "Zodiac", year: 2007, director: "David Fincher", rating: "7.7" },
+        { title: "Prisoners", year: 2013, director: "Denis Villeneuve", rating: "8.1" },
+      ],
+    },
+    {
+      id: "alien", name: "Alien",
+      core: "var(--alien)", glow: "var(--alien-glow)",
+      size: 150, top: "38%", left: "40%", labelSize: 15,
+      moods: ["curious","strange","cosmic","otherworldly","weird","speculative","mysterious","spacey","wonder"],
+      films: [
+        { title: "Arrival", year: 2016, director: "Denis Villeneuve", rating: "7.9" },
+        { title: "Under the Skin", year: 2013, director: "Jonathan Glazer", rating: "6.3" },
+        { title: "Annihilation", year: 2018, director: "Alex Garland", rating: "6.8" },
+      ],
+    },
+    {
+      id: "drama", name: "Drama",
+      core: "var(--drama)", glow: "var(--drama-glow)",
+      size: 220, top: "28%", left: "66%", labelSize: 18,
+      moods: ["heavy","emotional","grief","heartbroken","overwhelmed","serious","sad","weighty","longing"],
+      films: [
+        { title: "Moonlight", year: 2016, director: "Barry Jenkins", rating: "7.4" },
+        { title: "Manchester by the Sea", year: 2016, director: "Kenneth Lonergan", rating: "7.8" },
+        { title: "Amour", year: 2012, director: "Michael Haneke", rating: "7.9" },
+      ],
+    },
+    {
+      id: "wonder", name: "Wonder",
+      core: "var(--wonder)", glow: "var(--wonder-glow)",
+      size: 140, top: "72%", left: "52%", labelSize: 14,
+      moods: ["hopeful","light","optimistic","playful","adventurous","excited","joyful","inspired","curious"],
+      films: [
+        { title: "Little Miss Sunshine", year: 2006, director: "Jonathan Dayton & Valerie Faris", rating: "7.8" },
+        { title: "CODA", year: 2021, director: "Sian Heder", rating: "8.0" },
+        { title: "The Secret Life of Walter Mitty", year: 2013, director: "Ben Stiller", rating: "7.3" },
+      ],
+    },
+  ];
+
+  const orbField = document.getElementById("orb-field");
+  const chipsEl = document.getElementById("genre-chips");
+  const panel = document.getElementById("panel");
+  const panelTitle = document.getElementById("panel-title");
+  const panelBody = document.getElementById("panel-body");
+  const panelClose = document.getElementById("panel-close");
+  const moodForm = document.getElementById("mood-form");
+  const moodInput = document.getElementById("mood-input");
+  const moodHint = document.getElementById("mood-hint");
+
+  let openGenre = null;
+
+  function orbEl(id) { return document.getElementById(`orb-${id}`); }
+  function chipEl(id) { return document.getElementById(`chip-${id}`); }
+
+  GENRES.forEach(g => {
+    const el = document.createElement("div");
+    el.className = "orb";
+    el.id = `orb-${g.id}`;
+    el.style.width = g.size + "px";
+    el.style.height = g.size + "px";
+    el.style.top = g.top;
+    el.style.left = g.left;
+    el.style.setProperty("--core", g.core);
+    el.style.setProperty("--glow", g.glow);
+    el.style.setProperty("--label-size", g.labelSize + "px");
+    el.style.background = `radial-gradient(circle at 40% 35%, ${g.glow} 0%, ${g.core} 78%)`;
+    el.innerHTML = `<span class="orb-label">${g.name}</span>`;
+    el.addEventListener("click", () => toggleGenre(g.id));
+    orbField.appendChild(el);
+
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "chip";
+    chip.id = `chip-${g.id}`;
+    chip.textContent = g.name;
+    chip.addEventListener("click", () => toggleGenre(g.id));
+    chipsEl.appendChild(chip);
+  });
+
+  function toggleGenre(id, opts = {}) {
+    if (openGenre === id) {
+      closePanel();
+      return;
+    }
+    openGenre = id;
+    const g = GENRES.find(x => x.id === id);
+    renderPanel(g);
+    positionPanel(g);
+    updateOrbStates();
+    updateChipStates();
+  }
+
+  function closePanel() {
+    openGenre = null;
+    panel.classList.remove("visible");
+    updateOrbStates();
+    updateChipStates();
+  }
+
+  function updateOrbStates(matchedId) {
+    GENRES.forEach(g => {
+      const el = orbEl(g.id);
+      el.classList.toggle("open", openGenre === g.id);
+      el.classList.toggle("dim", openGenre !== null && openGenre !== g.id);
+      el.classList.toggle("matched", !!matchedId && matchedId === g.id);
+    });
+  }
+
+  function updateChipStates() {
+    GENRES.forEach(g => chipEl(g.id).classList.toggle("selected", openGenre === g.id));
+  }
+
+  function renderPanel(g) {
+    panelTitle.textContent = g.name;
+    panelTitle.style.setProperty("--core", g.core);
+    panel.style.setProperty("--core", g.core);
+    panelBody.innerHTML = g.films.map(f => `
+      <div class="movie-card" style="--core:${g.core}; --glow:${g.glow}">
+        <div class="poster"></div>
+        <div class="movie-info">
+          <div class="movie-title">${f.title} <span class="year">· ${f.year}</span></div>
+          <div class="movie-director">${f.director}</div>
+          <div class="movie-meta">
+            <span class="imdb-badge">IMDb ${f.rating}</span>
+          </div>
+        </div>
+      </div>
+    `).join("");
+    panel.classList.add("visible");
+  }
+
+  function positionPanel(g) {
+    const fieldRect = orbField.getBoundingClientRect();
+    const orb = orbEl(g.id);
+    const orbRect = orb.getBoundingClientRect();
+
+    const panelW = panel.offsetWidth || 300;
+    const panelH = 420;
+
+    let left = orbRect.left - fieldRect.left + orbRect.width / 2 + 24;
+    let top = orbRect.top - fieldRect.top - 20;
+
+    if (left + panelW > fieldRect.width - 16) {
+      left = orbRect.left - fieldRect.left - panelW - 24;
+    }
+    if (left < 16) left = 16;
+    if (top + panelH > fieldRect.height - 16) top = fieldRect.height - panelH - 16;
+    if (top < 16) top = 16;
+
+    panel.style.left = left + "px";
+    panel.style.top = top + "px";
+  }
+
+  panelClose.addEventListener("click", closePanel);
+
+  document.addEventListener("click", (e) => {
+    if (!openGenre) return;
+    if (panel.contains(e.target)) return;
+    if (e.target.closest(".orb") || e.target.closest(".chip")) return;
+    closePanel();
+  });
+
+  window.addEventListener("resize", () => {
+    if (openGenre) positionPanel(GENRES.find(g => g.id === openGenre));
+  });
+
+  // ── MOOD MATCHING ──
+  function bestMatch(text) {
+    const words = text.toLowerCase().match(/[a-z']+/g) || [];
+    if (!words.length) return null;
+    let best = null, bestScore = 0;
+    GENRES.forEach(g => {
+      let score = 0;
+      words.forEach(w => {
+        if (g.moods.includes(w)) score += 2;
+        else if (g.moods.some(m => m.includes(w) || w.includes(m))) score += 1;
+      });
+      if (score > bestScore) { bestScore = score; best = g; }
+    });
+    return best;
+  }
+
+  moodForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const match = bestMatch(moodInput.value);
+    if (!match) {
+      moodHint.textContent = moodInput.value.trim()
+        ? "No strong match yet — try a genre chip instead."
+        : "";
+      moodHint.classList.remove("active");
+      updateOrbStates();
+      return;
+    }
+    moodHint.textContent = `Sounds like ${match.name.toLowerCase()} to us.`;
+    moodHint.classList.add("active");
+    updateOrbStates(match.id);
+    toggleGenreForce(match.id);
+  });
+
+  function toggleGenreForce(id) {
+    openGenre = null;
+    toggleGenre(id);
+    updateOrbStates(id);
+  }
+
+  moodInput.addEventListener("input", () => {
+    if (!moodInput.value) {
+      moodHint.textContent = "";
+      moodHint.classList.remove("active");
+      updateOrbStates();
+    }
+  });
+</script>
+</body>
+</html>
